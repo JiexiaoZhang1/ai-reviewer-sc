@@ -39,7 +39,15 @@
   2. 依据启发式对源文件排序，并对超大文件按 token 分块。
   3. 用 GPT-5 为每个候选片段生成中文摘要，提取函数/方法名与行号。
   4. 汇总目录树、摘要、符号表，再次调用 GPT-5 生成最终报告。
-- **配置**：核心参数集中在 `app/config.py`。默认已经内置 OpenAI Key，正常情况下无需额外设置；如需自定义，可覆盖环境变量 `OPENAI_API_KEY` 或编辑 `OPENAI_API_KEY_PLACEHOLDER`。
+- **配置**：所有参数集中在 `app/config.py`；在使用前必须将其中的 `OPENAI_API_KEY_PLACEHOLDER` 替换为你自己的 OpenAI API Key，否则服务无法启动。
+
+---
+
+## 使用前准备
+
+1. 打开 `app/config.py`。
+2. 将常量 `OPENAI_API_KEY_PLACEHOLDER` 的值替换为真实的 OpenAI API Key（必须具备访问 GPT-5 Responses API 的权限）。请保留 `PLACEHOLDER_SENTINEL` 常量不变。
+3. 保存文件后再继续下面的运行步骤。
 
 ---
 
@@ -47,17 +55,18 @@
 
 ### 方式一：本地运行
 
-1. 安装依赖
+1. （必做）按照“使用前准备”完成 API Key 设置。
+2. 安装依赖
    ```bash
    pip install -r requirements.txt
    ```
-2. 启动服务
+3. 启动服务
    ```bash
    uvicorn app.api:app --host 0.0.0.0 --port 8000
    ```
-3. 健康检查  
+4. 健康检查  
    访问 `http://127.0.0.1:8000/health`，若返回 `{"status":"ok"}` 表示启动成功。
-4. 发送分析请求
+5. 发送分析请求
    ```bash
    curl -X POST http://127.0.0.1:8000/analyze \
      --form-string "problem_description=$(cat example1/examination.md)" \
@@ -67,17 +76,16 @@
 
 ### 方式二：Docker
 
-1. 构建镜像
+1. 在构建镜像前，先按照“使用前准备”修改 `app/config.py` 中的 API Key。
+2. 构建镜像
    ```bash
    docker build -t ai-reviewer-agent .
    ```
-2. 运行容器
+3. 运行容器
    ```bash
    docker run --rm -p 8000:8000 ai-reviewer-agent
    ```
-3. 其余操作（健康检查、`curl` 调用）与本地运行一致。
-
-> 如需自定义 OpenAI Key，可在运行容器时追加 `-e OPENAI_API_KEY=sk-xxx` 覆盖默认值。
+4. 其余操作（健康检查、`curl` 调用）与本地运行一致。
 
 ---
 
@@ -132,7 +140,5 @@ example1/             # 评测示例数据
 ## 常见问题
 
 - **为何 `curl` 没响应？** 代码库大时需要多次调用 GPT，处理过程较慢，可调小 `MAX_CANDIDATE_FILES`。
-- **能否改用自己的 Key？** 直接设置环境变量 `OPENAI_API_KEY` 或修改 `app/config.py` 中的 `OPENAI_API_KEY_PLACEHOLDER`。
+- **提示缺少 API Key？** 请确认已在 `app/config.py` 将 `OPENAI_API_KEY_PLACEHOLDER` 替换为有效 Key，并在修改后重启服务。
 - **返回的函数为何没有行号？** 当前版本已强制模型引用符号表填充函数与行号，若为空请检查上传代码是否能解析。
-
-
